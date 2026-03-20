@@ -17,6 +17,7 @@ import {
   createBaseUserMedia,
 } from "./UserMediaViewModel";
 import { type ObservableScope } from "../ObservableScope";
+import { loadUserVolume, saveUserVolume } from "../../settings/userVolumeStore";
 
 export interface RemoteUserMediaViewModel
   extends BaseUserMediaViewModel, VolumeControls {
@@ -52,6 +53,8 @@ export function createRemoteUserMedia(
       sink$: scope.behavior(
         inputs.participant$.pipe(map((p) => (volume) => p?.setVolume(volume))),
       ),
+      initialVolume: loadUserVolume(inputs.userId),
+      onVolumeCommit: (volume) => saveUserVolume(inputs.userId, volume),
     }),
     local: false,
     speaking$: scope.behavior(

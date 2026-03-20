@@ -18,6 +18,10 @@ import {
 import { type ObservableScope } from "../ObservableScope";
 import { createVolumeControls, type VolumeControls } from "../VolumeControls";
 import { observeTrackReference$ } from "../observeTrackReference";
+import {
+  loadScreenShareVolume,
+  saveScreenShareVolume,
+} from "../../settings/userVolumeStore";
 
 export interface RemoteScreenShareViewModel
   extends BaseScreenShareViewModel, VolumeControls {
@@ -53,6 +57,9 @@ export function createRemoteScreenShare(
           ),
         ),
       ),
+      initialVolume: loadScreenShareVolume(inputs.userId),
+      onVolumeCommit: (volume) =>
+        saveScreenShareVolume(inputs.userId, volume),
     }),
     local: false,
     videoEnabled$: scope.behavior(

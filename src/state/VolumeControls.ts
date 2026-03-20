@@ -35,6 +35,15 @@ interface VolumeControlsInputs {
    * requested volume.
    */
   sink$: Behavior<(volume: number) => void>;
+  /**
+   * The initial volume to start with, e.g. restored from a persisted value.
+   * Defaults to 1 (full volume).
+   */
+  initialVolume?: number;
+  /**
+   * Called when the volume is committed (slider released), for persistence.
+   */
+  onVolumeCommit?: (volume: number) => void;
 }
 
 /**
@@ -43,15 +52,23 @@ interface VolumeControlsInputs {
  */
 export function createVolumeControls(
   scope: ObservableScope,
-  { pretendToBeDisconnected$, sink$ }: VolumeControlsInputs,
+  {
+    pretendToBeDisconnected$,
+    sink$,
+    initialVolume,
+    onVolumeCommit,
+  }: VolumeControlsInputs,
 ): VolumeControls {
   const toggleMuted$ = new Subject<"toggle mute">();
   const adjustVolume$ = new Subject<number>();
   const commitVolume$ = new Subject<"commit">();
 
+  const iv = initialVolume ?? 1;
   const playbackVolume$ = scope.behavior<number>(
     merge(toggleMuted$, adjustVolume$, commitVolume$).pipe(
-      accumulate({ volume: 1, committedVolume: 1 }, (state, event) => {
+      accumulate(
+        { volume: iv, committedVolume: iv === 0 ? 1 : iv },
+        (state, event) => {
         switch (event) {
           case "toggle mute":
             return {
@@ -96,6 +113,9 @@ export function createVolumeControls(
     ),
     togglePlaybackMuted: () => toggleMuted$.next("toggle mute"),
     adjustPlaybackVolume: (value: number) => adjustVolume$.next(value),
-    commitPlaybackVolume: () => commitVolume$.next("commit"),
+    commitPlaybackVolume: () => {
+      commitVolume$.next("commit");
+      onVolumeCommit?.(playbackVolume$.value);
+    },
   };
 }

@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
 Please see LICENSE in the repository root for full details.
 */
 
-import { expect, onTestFinished, test, vi } from "vitest";
+import { afterEach, expect, onTestFinished, test, vi } from "vitest";
 import {
   type LocalTrackPublication,
   LocalVideoTrack,
@@ -41,6 +41,10 @@ vi.mock("../../Platform", () => ({
     return platformMock();
   },
 }));
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 const rtcMembership = mockRtcMembership("@alice:example.org", "AAAA");
 
@@ -288,4 +292,71 @@ test("remote media is not in waiting state when user does not intend to publish 
     undefined, // No room (no advertised transport)
   );
   expect(vm.waitingForMedia$.value).toBe(false);
+});
+
+test("remote media starts with persisted volume", () => {
+  localStorage.setItem("ec-user-volume:@alice:example.org", "0.5");
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  expect(vm.playbackVolume$.value).toBe(0.5);
+  expect(setVolumeSpy).toHaveBeenCalledWith(0.5);
+});
+
+test("remote media persists volume on commit", () => {
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: vi.fn() }),
+  );
+  vm.adjustPlaybackVolume(0.7);
+  vm.commitPlaybackVolume();
+  expect(localStorage.getItem("ec-user-volume:@alice:example.org")).toBe(
+    "0.7",
+  );
+});
+
+test("remote media with persisted volume 0 starts muted and unmutes to 1", () => {
+  localStorage.setItem("ec-user-volume:@alice:example.org", "0");
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  expect(vm.playbackVolume$.value).toBe(0);
+  vm.togglePlaybackMuted();
+  expect(vm.playbackVolume$.value).toBe(1);
+  expect(setVolumeSpy).toHaveBeenLastCalledWith(1);
+});
+
+test("remote screen share starts with persisted volume", () => {
+  localStorage.setItem("ec-screenshare-volume:@alice:example.org", "0.3");
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteScreenShare(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  expect(vm.playbackVolume$.value).toBe(0.3);
+  expect(setVolumeSpy).toHaveBeenCalledWith(
+    0.3,
+    Track.Source.ScreenShareAudio,
+  );
+});
+
+test("remote screen share persists volume on commit", () => {
+  const vm = mockRemoteScreenShare(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: vi.fn() }),
+  );
+  vm.adjustPlaybackVolume(0.4);
+  vm.commitPlaybackVolume();
+  expect(
+    localStorage.getItem("ec-screenshare-volume:@alice:example.org"),
+  ).toBe("0.4");
 });
