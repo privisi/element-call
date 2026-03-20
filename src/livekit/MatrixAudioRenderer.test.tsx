@@ -252,15 +252,20 @@ it.each(TEST_CASES)(
   },
 );
 
-it("should not setup audioContext gain and pan if there is no need to.", () => {
+it("should setup audioContext with identity gain and pan when not in earpiece mode", () => {
   renderTestComponent([{ userId: "@bob", deviceId: "DEV0" }], ["@bob:DEV0"]);
   const audioTrack = tracks[0].publication.track! as RemoteAudioTrack;
 
-  expect(audioTrack.setAudioContext).toHaveBeenCalledTimes(1);
-  expect(audioTrack.setAudioContext).toHaveBeenCalledWith(undefined);
-  expect(audioTrack.setWebAudioPlugins).toHaveBeenCalledTimes(1);
-  expect(audioTrack.setWebAudioPlugins).toHaveBeenCalledWith([]);
+  // AudioContext is always enabled (for volume amplification via GainNode).
+  // It's called twice: first with undefined (before AudioContext is created),
+  // then with the real context once it's available.
+  expect(audioTrack.setAudioContext).toHaveBeenLastCalledWith(testAudioContext);
+  expect(audioTrack.setWebAudioPlugins).toHaveBeenLastCalledWith([
+    testAudioContext.gain,
+    testAudioContext.pan,
+  ]);
 
+  // Identity transforms when not in earpiece mode
   expect(testAudioContext.gain.gain.value).toEqual(1);
   expect(testAudioContext.pan.pan.value).toEqual(0);
 });

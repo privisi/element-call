@@ -105,9 +105,15 @@ export function LivekitRoomAudioRenderer({
   // So we can only use the pan trick only works is the phone is not in standby.
   // If earpiece mode is not used we do not use audioContext to allow standby playback.
   // shouldUseAudioContext is set to false if stereoPan === 0 to allow standby bluetooth playback.
+  //
+  // However, we always enable AudioContext so that LiveKit's internal GainNode
+  // is used for volume control. This allows per-user volume amplification above
+  // 100% (GainNode supports values > 1.0, while HTMLMediaElement.volume does
+  // not). The tradeoff is that on iOS Safari without earpiece mode, audio may
+  // pause when the device enters standby due to the AudioContext being suspended.
 
   const { pan: stereoPan, volume: volumeFactor } = useEarpieceAudioConfig();
-  const shouldUseAudioContext = stereoPan !== 0;
+  const shouldUseAudioContext = true;
 
   // initialize the potentially used audio context.
   const [audioContext, setAudioContext] = useState<AudioContext | undefined>(

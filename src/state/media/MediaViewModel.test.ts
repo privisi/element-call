@@ -360,3 +360,49 @@ test("remote screen share persists volume on commit", () => {
     localStorage.getItem("ec-screenshare-volume:@alice:example.org"),
   ).toBe("0.4");
 });
+
+test("remote media supports amplified volume above 1.0", () => {
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  vm.adjustPlaybackVolume(1.5);
+  vm.commitPlaybackVolume();
+  expect(vm.playbackVolume$.value).toBe(1.5);
+  expect(setVolumeSpy).toHaveBeenCalledWith(1.5);
+  expect(localStorage.getItem("ec-user-volume:@alice:example.org")).toBe(
+    "1.5",
+  );
+});
+
+test("remote media starts with persisted amplified volume", () => {
+  localStorage.setItem("ec-user-volume:@alice:example.org", "1.8");
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  expect(vm.playbackVolume$.value).toBe(1.8);
+  expect(setVolumeSpy).toHaveBeenCalledWith(1.8);
+});
+
+test("remote media mute/unmute at amplified volume restores last committed volume", () => {
+  const setVolumeSpy = vi.fn();
+  const vm = mockRemoteMedia(
+    rtcMembership,
+    {},
+    mockRemoteParticipant({ setVolume: setVolumeSpy }),
+  );
+  vm.adjustPlaybackVolume(1.5);
+  vm.commitPlaybackVolume();
+  expect(vm.playbackVolume$.value).toBe(1.5);
+  vm.togglePlaybackMuted();
+  expect(vm.playbackVolume$.value).toBe(0);
+  expect(setVolumeSpy).toHaveBeenCalledWith(0);
+  vm.togglePlaybackMuted();
+  expect(vm.playbackVolume$.value).toBe(1.5);
+  expect(setVolumeSpy).toHaveBeenLastCalledWith(1.5);
+});

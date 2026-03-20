@@ -8,13 +8,18 @@ Please see LICENSE in the repository root for full details.
 const USER_VOLUME_PREFIX = "ec-user-volume:";
 const SCREENSHARE_VOLUME_PREFIX = "ec-screenshare-volume:";
 
-function loadVolume(storageKey: string): number {
+/** Maximum volume for voice audio (supports amplification above 100%). */
+export const MAX_VOICE_VOLUME = 2;
+/** Maximum volume for screen share audio. */
+export const MAX_SCREENSHARE_VOLUME = 1;
+
+function loadVolume(storageKey: string, maxVolume: number): number {
   try {
     const raw = localStorage.getItem(storageKey);
     if (raw === null) return 1;
     const value: unknown = JSON.parse(raw);
     if (typeof value !== "number" || !isFinite(value)) return 1;
-    return Math.max(0, Math.min(1, value));
+    return Math.max(0, Math.min(maxVolume, value));
   } catch {
     return 1;
   }
@@ -29,7 +34,7 @@ function saveVolume(storageKey: string, volume: number): void {
 }
 
 export function loadUserVolume(userId: string): number {
-  return loadVolume(`${USER_VOLUME_PREFIX}${userId}`);
+  return loadVolume(`${USER_VOLUME_PREFIX}${userId}`, MAX_VOICE_VOLUME);
 }
 
 export function saveUserVolume(userId: string, volume: number): void {
@@ -37,7 +42,7 @@ export function saveUserVolume(userId: string, volume: number): void {
 }
 
 export function loadScreenShareVolume(userId: string): number {
-  return loadVolume(`${SCREENSHARE_VOLUME_PREFIX}${userId}`);
+  return loadVolume(`${SCREENSHARE_VOLUME_PREFIX}${userId}`, MAX_SCREENSHARE_VOLUME);
 }
 
 export function saveScreenShareVolume(userId: string, volume: number): void {

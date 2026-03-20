@@ -12,6 +12,8 @@ import {
   saveUserVolume,
   loadScreenShareVolume,
   saveScreenShareVolume,
+  MAX_VOICE_VOLUME,
+  MAX_SCREENSHARE_VOLUME,
 } from "./userVolumeStore";
 
 afterEach(() => {
@@ -59,9 +61,19 @@ describe("loadUserVolume", () => {
     expect(loadUserVolume("@alice:example.org")).toBe(1);
   });
 
-  it("clamps values greater than 1", () => {
+  it("returns values in the amplification range (1, 2]", () => {
     localStorage.setItem("ec-user-volume:@alice:example.org", "1.5");
-    expect(loadUserVolume("@alice:example.org")).toBe(1);
+    expect(loadUserVolume("@alice:example.org")).toBe(1.5);
+  });
+
+  it("returns the maximum amplification value 2", () => {
+    localStorage.setItem("ec-user-volume:@alice:example.org", "2");
+    expect(loadUserVolume("@alice:example.org")).toBe(2);
+  });
+
+  it("clamps values greater than MAX_VOICE_VOLUME to 2", () => {
+    localStorage.setItem("ec-user-volume:@alice:example.org", "2.5");
+    expect(loadUserVolume("@alice:example.org")).toBe(MAX_VOICE_VOLUME);
   });
 
   it("clamps negative values to 0", () => {
@@ -127,6 +139,16 @@ describe("loadScreenShareVolume", () => {
   it("uses a different key from user volume", () => {
     localStorage.setItem("ec-user-volume:@alice:example.org", "0.5");
     expect(loadScreenShareVolume("@alice:example.org")).toBe(1);
+  });
+
+  it("clamps values greater than MAX_SCREENSHARE_VOLUME to 1", () => {
+    localStorage.setItem(
+      "ec-screenshare-volume:@alice:example.org",
+      "1.5",
+    );
+    expect(loadScreenShareVolume("@alice:example.org")).toBe(
+      MAX_SCREENSHARE_VOLUME,
+    );
   });
 });
 
