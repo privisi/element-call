@@ -126,12 +126,20 @@ export function LivekitRoomAudioRenderer({
       void ctx.close();
     };
   }, []);
+  // Only create shared earpiece gain/pan nodes when in earpiece mode.
+  // IMPORTANT: These nodes must NOT be shared across multiple tracks in
+  // non-earpiece mode, because Web Audio's connect() is additive — multiple
+  // track sources connected to the same GainNode mix their audio together,
+  // breaking per-user volume control.
+  const needsEarpiecePlugins = stereoPan !== 0;
   const audioNodes = useMemo(
     () => ({
-      gain: audioContext?.createGain(),
-      pan: audioContext?.createStereoPanner(),
+      gain: needsEarpiecePlugins ? audioContext?.createGain() : undefined,
+      pan: needsEarpiecePlugins
+        ? audioContext?.createStereoPanner()
+        : undefined,
     }),
-    [audioContext],
+    [audioContext, needsEarpiecePlugins],
   );
 
   // Simple effects to update the gain and pan node based on the props
@@ -193,18 +201,20 @@ function AudioTrackWithAudioNodes({
   // (adding the audio context when already mounted did not work outside strict mode)
   const [trackReady, setTrackReady] = useReactiveState(
     () => false,
-    // We only want the track to reset once both (audioNodes and audioContext) are set.
-    // for unsetting the audioContext its enough if one of the two is undefined.
-    [audioContext && audioNodes],
+    // Reset when audioContext or earpiece plugin nodes change.
+    [audioContext, audioNodes.gain, audioNodes.pan],
   );
 
   useEffect(() => {
     if (!trackRef || trackReady) return;
     const track = trackRef.publication.track as RemoteAudioTrack;
-    const useContext = audioContext && audioNodes.gain && audioNodes.pan;
-    track.setAudioContext(useContext ? audioContext : undefined);
+    // Always set AudioContext so LiveKit creates a per-track GainNode
+    // (needed for volume amplification above 100%).
+    // Only pass earpiece gain/pan plugins when they exist.
+    track.setAudioContext(audioContext ?? undefined);
+    const hasPlugins = audioNodes.gain && audioNodes.pan;
     track.setWebAudioPlugins(
-      useContext ? [audioNodes.gain!, audioNodes.pan!] : [],
+      hasPlugins ? [audioNodes.gain!, audioNodes.pan!] : [],
     );
     setTrackReady(true);
     controls.setPlaybackStarted();

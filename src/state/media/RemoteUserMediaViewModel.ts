@@ -51,7 +51,11 @@ export function createRemoteUserMedia(
     ...createVolumeControls(scope, {
       pretendToBeDisconnected$,
       sink$: scope.behavior(
-        inputs.participant$.pipe(map((p) => (volume) => p?.setVolume(volume))),
+        inputs.participant$.pipe(
+          map((p) => (volume: number) => {
+            p?.setVolume(volume);
+          }),
+        ),
       ),
       initialVolume: loadUserVolume(inputs.userId),
       onVolumeCommit: (volume) => saveUserVolume(inputs.userId, volume),
